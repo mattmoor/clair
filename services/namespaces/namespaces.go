@@ -56,4 +56,7 @@ type Service interface {
 	// # Namespace
 	// ListNamespaces returns the entire list of known Namespaces.
 	ListNamespaces() ([]services.Namespace, error)
+
+	// InsertNamespace inserts the named namespace, returning the inserted services.Namespace.
+	InsertNamespace(name string) (*services.Namespace, error)
 }

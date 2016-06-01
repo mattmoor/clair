@@ -37,12 +37,15 @@ const (
 )
 
 func TestRaceAffects(t *testing.T) {
-	datastore, err := openDatabaseForTest("RaceAffects", false)
+	b, err := openDatabaseForTest("RaceAffects", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	// TODO(mattmoor): Wrap in a vulnerability type.
+	b.ns = &ns{b}
+	datastore := b
 
 	// Insert the Feature on which we'll work.
 	feature := services.Feature{

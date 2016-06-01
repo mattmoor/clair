@@ -19,38 +19,38 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/coreos/clair/services"
 )
 
 func TestInsertNamespace(t *testing.T) {
-	datastore, err := openDatabaseForTest("InsertNamespace", false)
+	b, err := openDatabaseForTest("InsertNamespace", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	datastore := &ns{b}
 
 	// Invalid Namespace.
-	id0, err := datastore.insertNamespace(services.Namespace{})
+	id0, err := datastore.InsertNamespace("")
 	assert.NotNil(t, err)
 	assert.Zero(t, id0)
 
 	// Insert Namespace and ensure we can find it.
-	id1, err := datastore.insertNamespace(services.Namespace{Name: "TestInsertNamespace1"})
+	ns1, err := datastore.InsertNamespace("TestInsertNamespace1")
 	assert.Nil(t, err)
-	id2, err := datastore.insertNamespace(services.Namespace{Name: "TestInsertNamespace1"})
+	ns2, err := datastore.InsertNamespace("TestInsertNamespace1")
 	assert.Nil(t, err)
-	assert.Equal(t, id1, id2)
+	assert.Equal(t, ns1, ns2)
 }
 
 func TestListNamespace(t *testing.T) {
-	datastore, err := openDatabaseForTest("ListNamespaces", true)
+	b, err := openDatabaseForTest("ListNamespaces", true)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	datastore := &ns{b}
 
 	namespaces, err := datastore.ListNamespaces()
 	assert.Nil(t, err)

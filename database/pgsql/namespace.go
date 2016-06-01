@@ -21,16 +21,21 @@ import (
 	cerrors "github.com/coreos/clair/utils/errors"
 )
 
-func (pgSQL *pgSQL) insertNamespace(namespace services.Namespace) (int, error) {
-	if namespace.Name == "" {
-		return 0, cerrors.NewBadRequestError("could not find/insert invalid Namespace")
+// ns implements namespaces.Service
+type ns struct {
+	*pgSQL
+}
+
+func (pgSQL *ns) InsertNamespace(name string) (*services.Namespace, error) {
+	if name == "" {
+		return nil, cerrors.NewBadRequestError("could not find/insert invalid Namespace")
 	}
 
 	if pgSQL.cache != nil {
 		promCacheQueriesTotal.WithLabelValues("namespace").Inc()
-		if id, found := pgSQL.cache.Get("namespace:" + namespace.Name); found {
+		if id, found := pgSQL.cache.Get("namespace:" + name); found {
 			promCacheHitsTotal.WithLabelValues("namespace").Inc()
-			return id.(int), nil
+			return &services.Namespace{services.Model{id.(int)}, name}, nil
 		}
 	}
 
@@ -38,19 +43,19 @@ func (pgSQL *pgSQL) insertNamespace(namespace services.Namespace) (int, error) {
 	defer observeQueryTime("insertNamespace", "all", time.Now())
 
 	var id int
-	err := pgSQL.QueryRow(soiNamespace, namespace.Name).Scan(&id)
+	err := pgSQL.QueryRow(soiNamespace, name).Scan(&id)
 	if err != nil {
-		return 0, handleError("soiNamespace", err)
+		return nil, handleError("soiNamespace", err)
 	}
 
 	if pgSQL.cache != nil {
-		pgSQL.cache.Add("namespace:"+namespace.Name, id)
+		pgSQL.cache.Add("namespace:"+name, id)
 	}
 
-	return id, nil
+	return &services.Namespace{services.Model{id}, name}, nil
 }
 
-func (pgSQL *pgSQL) ListNamespaces() (namespaces []services.Namespace, err error) {
+func (pgSQL *ns) ListNamespaces() (namespaces []services.Namespace, err error) {
 	rows, err := pgSQL.Query(listNamespace)
 	if err != nil {
 		return namespaces, handleError("listNamespace", err)

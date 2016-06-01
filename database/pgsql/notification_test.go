@@ -26,12 +26,15 @@ import (
 )
 
 func TestNotification(t *testing.T) {
-	datastore, err := openDatabaseForTest("Notification", false)
+	b, err := openDatabaseForTest("Notification", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	// TODO(mattmoor): Wrap in a notification type.
+	b.ns = &ns{b}
+	datastore := b
 
 	// Try to get a notification when there is none.
 	_, err = datastore.GetAvailableNotification(time.Second)

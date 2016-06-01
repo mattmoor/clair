@@ -248,11 +248,11 @@ func (pgSQL *pgSQL) InsertLayer(layer services.Layer) error {
 	// Find or insert namespace if provided.
 	var namespaceID zero.Int
 	if layer.Namespace != nil {
-		n, err := pgSQL.insertNamespace(*layer.Namespace)
+		n, err := pgSQL.ns.InsertNamespace(layer.Namespace.Name)
 		if err != nil {
 			return err
 		}
-		namespaceID = zero.IntFrom(int64(n))
+		namespaceID = zero.IntFrom(int64(n.ID))
 	} else if layer.Namespace == nil && layer.Parent != nil {
 		// Import the Namespace from the parent if it has one and this layer doesn't specify one.
 		if layer.Parent.Namespace != nil {

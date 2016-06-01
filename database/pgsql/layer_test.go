@@ -27,12 +27,15 @@ import (
 )
 
 func TestFindLayer(t *testing.T) {
-	datastore, err := openDatabaseForTest("FindLayer", true)
+	b, err := openDatabaseForTest("FindLayer", true)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	// TODO(mattmoor): Wrap in a layer type.
+	b.ns = &ns{b}
+	datastore := b
 
 	// Layer-0: no parent, no namespace, no feature, no vulnerability
 	layer, err := datastore.FindLayer("layer-0", false, false)
@@ -104,12 +107,15 @@ func TestFindLayer(t *testing.T) {
 }
 
 func TestInsertLayer(t *testing.T) {
-	datastore, err := openDatabaseForTest("InsertLayer", false)
+	b, err := openDatabaseForTest("InsertLayer", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	// TODO(mattmoor): Wrap in a layer type.
+	b.ns = &ns{b}
+	datastore := b
 
 	// Insert invalid layer.
 	testInsertLayerInvalid(t, datastore)

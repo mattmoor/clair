@@ -30,6 +30,7 @@ func TestInsertFeature(t *testing.T) {
 		return
 	}
 	defer datastore.Close()
+	datastore.ns = &ns{datastore}
 
 	// Invalid Feature.
 	id0, err := datastore.insertFeature(services.Feature{})

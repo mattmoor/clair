@@ -42,14 +42,14 @@ func (pgSQL *pgSQL) insertFeature(feature services.Feature) (int, error) {
 	defer observeQueryTime("insertFeature", "all", time.Now())
 
 	// Find or create Namespace.
-	namespaceID, err := pgSQL.insertNamespace(feature.Namespace)
+	namespace, err := pgSQL.ns.InsertNamespace(feature.Namespace.Name)
 	if err != nil {
 		return 0, err
 	}
 
 	// Find or create Feature.
 	var id int
-	err = pgSQL.QueryRow(soiFeature, feature.Name, namespaceID).Scan(&id)
+	err = pgSQL.QueryRow(soiFeature, feature.Name, namespace.ID).Scan(&id)
 	if err != nil {
 		return 0, handleError("soiFeature", err)
 	}

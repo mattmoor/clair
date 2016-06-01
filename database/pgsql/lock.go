@@ -20,11 +20,16 @@ import (
 	cerrors "github.com/coreos/clair/utils/errors"
 )
 
+// locker implements locks.Service
+type locker struct {
+	*pgSQL
+}
+
 // Lock tries to set a temporary lock in the database.
 //
 // Lock does not block, instead, it returns true and its expiration time
 // is the lock has been successfully acquired or false otherwise
-func (pgSQL *pgSQL) Lock(name string, owner string, duration time.Duration, renew bool) (bool, time.Time) {
+func (pgSQL *locker) Lock(name string, owner string, duration time.Duration, renew bool) (bool, time.Time) {
 	if name == "" || owner == "" || duration == 0 {
 		log.Warning("could not create an invalid lock")
 		return false, time.Time{}
@@ -64,7 +69,7 @@ func (pgSQL *pgSQL) Lock(name string, owner string, duration time.Duration, rene
 }
 
 // Unlock unlocks a lock specified by its name if I own it
-func (pgSQL *pgSQL) Unlock(name, owner string) {
+func (pgSQL *locker) Unlock(name, owner string) {
 	if name == "" || owner == "" {
 		log.Warning("could not delete an invalid lock")
 		return
@@ -77,7 +82,7 @@ func (pgSQL *pgSQL) Unlock(name, owner string) {
 
 // FindLock returns the owner of a lock specified by its name and its
 // expiration time.
-func (pgSQL *pgSQL) FindLock(name string) (string, time.Time, error) {
+func (pgSQL *locker) FindLock(name string) (string, time.Time, error) {
 	if name == "" {
 		log.Warning("could not find an invalid lock")
 		return "", time.Time{}, cerrors.NewBadRequestError("could not find an invalid lock")
@@ -96,7 +101,7 @@ func (pgSQL *pgSQL) FindLock(name string) (string, time.Time, error) {
 }
 
 // pruneLocks removes every expired locks from the database
-func (pgSQL *pgSQL) pruneLocks() {
+func (pgSQL *locker) pruneLocks() {
 	defer observeQueryTime("pruneLocks", "all", time.Now())
 
 	if _, err := pgSQL.Exec(removeLockExpired); err != nil {

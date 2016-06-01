@@ -82,7 +82,11 @@ func init() {
 
 	// The types must match exactly because Go doesn't seem to allow covariance.
 	locks.Register("pgsql", func(cfg config.RegistrableComponentConfig) (locks.Service, error) {
-		return openDatabase(cfg)
+		b, err := openDatabase(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return &locker{b}, nil
 	})
 	keyvalue.Register("pgsql", func(cfg config.RegistrableComponentConfig) (keyvalue.Service, error) {
 		b, err := openDatabase(cfg)

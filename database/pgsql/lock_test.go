@@ -22,12 +22,13 @@ import (
 )
 
 func TestLock(t *testing.T) {
-	datastore, err := openDatabaseForTest("InsertNamespace", false)
+	b, err := openDatabaseForTest("InsertNamespace", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	datastore := &locker{b}
 
 	var l bool
 	var et time.Time

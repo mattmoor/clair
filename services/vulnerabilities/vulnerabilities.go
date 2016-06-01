@@ -74,6 +74,8 @@ type Service interface {
 	InsertVulnerabilities(vulnerabilities []services.Vulnerability, createNotification bool) error
 	// FindVulnerability retrieves a Vulnerability from the database, including the FixedIn list.
 	FindVulnerability(namespaceName, name string) (services.Vulnerability, error)
+	// FindVulnerabilityByID retrieves a Vulnerability from the database, including the FixedIn list.
+	FindVulnerabilityByID(id services.Model) (services.Vulnerability, error)
 	// DeleteVulnerability removes a Vulnerability from the database.
 	// It has to create a Notification that will contain the old Vulnerability.
 	DeleteVulnerability(namespaceName, name string) error

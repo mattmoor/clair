@@ -100,12 +100,11 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		// TODO(mattmoor): Make vulnerabilities.Open explicitly depend on namespaces.Service
 		b.ns, err = namespaces.Open(cfg)
 		if err != nil {
 			return nil, err
 		}
-		return b, nil
+		return &vulnz{b}, nil
 	})
 	layers.Register("pgsql", func(cfg config.RegistrableComponentConfig) (layers.Service, error) {
 		b, err := openDatabase(cfg)
@@ -120,7 +119,16 @@ func init() {
 		return b, nil
 	})
 	notifications.Register("pgsql", func(cfg config.RegistrableComponentConfig) (notifications.Service, error) {
-		return openDatabase(cfg)
+		b, err := openDatabase(cfg)
+		if err != nil {
+			return nil, err
+		}
+		// TODO(mattmoor): Make notifications.Open explicitly depend on vulnerabilities.Service
+		b.vulnz, err = vulnerabilities.Open(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return b, nil
 	})
 	namespaces.Register("pgsql", func(cfg config.RegistrableComponentConfig) (namespaces.Service, error) {
 		b, err := openDatabase(cfg)
@@ -136,6 +144,7 @@ type pgSQL struct {
 	cache  *lru.ARCCache
 	config Config
 	ns     namespaces.Service
+	vulnz  vulnerabilities.Service
 }
 
 // Close closes the database and destroys if ManageDatabaseLifecycle has been specified in

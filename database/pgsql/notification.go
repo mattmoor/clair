@@ -123,7 +123,7 @@ func (pgSQL *pgSQL) scanNotification(row *sql.Row, hasVulns bool) (services.Vuln
 
 	if hasVulns {
 		if oldVulnerabilityNullableID.Valid {
-			vulnerability, err := pgSQL.findVulnerabilityByIDWithDeleted(int(oldVulnerabilityNullableID.Int64))
+			vulnerability, err := pgSQL.vulnz.FindVulnerabilityByID(services.Model{int(oldVulnerabilityNullableID.Int64)})
 			if err != nil {
 				return notification, err
 			}
@@ -132,7 +132,7 @@ func (pgSQL *pgSQL) scanNotification(row *sql.Row, hasVulns bool) (services.Vuln
 		}
 
 		if newVulnerabilityNullableID.Valid {
-			vulnerability, err := pgSQL.findVulnerabilityByIDWithDeleted(int(newVulnerabilityNullableID.Int64))
+			vulnerability, err := pgSQL.vulnz.FindVulnerabilityByID(services.Model{int(newVulnerabilityNullableID.Int64)})
 			if err != nil {
 				return notification, err
 			}
@@ -147,6 +147,7 @@ func (pgSQL *pgSQL) scanNotification(row *sql.Row, hasVulns bool) (services.Vuln
 // Fills Vulnerability.LayersIntroducingVulnerability.
 // limit -1: won't do anything
 // limit 0: will just get the startID of the second page
+// TODO(mattmoor): I believe this truly belongs as a distinct API on layers.Service
 func (pgSQL *pgSQL) loadLayerIntroducingVulnerability(vulnerability *services.Vulnerability, limit, startID int) (int, error) {
 	tf := time.Now()
 

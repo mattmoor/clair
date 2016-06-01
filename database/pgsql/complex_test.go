@@ -43,9 +43,8 @@ func TestRaceAffects(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	// TODO(mattmoor): Wrap in a vulnerability type.
 	b.ns = &ns{b}
-	datastore := b
+	datastore := &vulnz{b}
 
 	// Insert the Feature on which we'll work.
 	feature := services.Feature{

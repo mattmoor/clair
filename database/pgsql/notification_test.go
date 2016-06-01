@@ -34,6 +34,7 @@ func TestNotification(t *testing.T) {
 	defer b.Close()
 	// TODO(mattmoor): Wrap in a notification type.
 	b.ns = &ns{b}
+	b.vulnz = &vulnz{b}
 	datastore := b
 
 	// Try to get a notification when there is none.
@@ -112,7 +113,7 @@ func TestNotification(t *testing.T) {
 			},
 		},
 	}
-	assert.Nil(t, datastore.insertVulnerability(v1, false, true))
+	assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1}, true))
 
 	// Get the notification associated to the previously inserted vulnerability.
 	notification, err := datastore.GetAvailableNotification(time.Second)
@@ -176,7 +177,7 @@ func TestNotification(t *testing.T) {
 		},
 	}
 
-	if assert.Nil(t, datastore.insertVulnerability(v1b, false, true)) {
+	if assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1b}, true)) {
 		notification, err = datastore.GetAvailableNotification(time.Second)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, notification.Name)
@@ -204,7 +205,7 @@ func TestNotification(t *testing.T) {
 	}
 
 	// Delete a vulnerability and verify the notification.
-	if assert.Nil(t, datastore.DeleteVulnerability(v1b.Namespace.Name, v1b.Name)) {
+	if assert.Nil(t, datastore.vulnz.DeleteVulnerability(v1b.Namespace.Name, v1b.Name)) {
 		notification, err = datastore.GetAvailableNotification(time.Second)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, notification.Name)

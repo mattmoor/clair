@@ -85,7 +85,11 @@ func init() {
 		return openDatabase(cfg)
 	})
 	keyvalue.Register("pgsql", func(cfg config.RegistrableComponentConfig) (keyvalue.Service, error) {
-		return openDatabase(cfg)
+		b, err := openDatabase(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return &kv{b}, nil
 	})
 	vulnerabilities.Register("pgsql", func(cfg config.RegistrableComponentConfig) (vulnerabilities.Service, error) {
 		return openDatabase(cfg)

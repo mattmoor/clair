@@ -21,12 +21,13 @@ import (
 )
 
 func TestKeyValue(t *testing.T) {
-	datastore, err := openDatabaseForTest("KeyValue", false)
+	b, err := openDatabaseForTest("KeyValue", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
+	defer b.Close()
+	datastore := &kv{b}
 
 	// Get non-existing key/value
 	f, err := datastore.GetKeyValue("test")

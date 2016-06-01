@@ -21,8 +21,13 @@ import (
 	cerrors "github.com/coreos/clair/utils/errors"
 )
 
+// kv implements keyvalue.Service
+type kv struct {
+	*pgSQL
+}
+
 // InsertKeyValue stores (or updates) a single key / value tuple.
-func (pgSQL *pgSQL) InsertKeyValue(key, value string) (err error) {
+func (pgSQL *kv) InsertKeyValue(key, value string) (err error) {
 	if key == "" || value == "" {
 		log.Warning("could not insert a flag which has an empty name or value")
 		return cerrors.NewBadRequestError("could not insert a flag which has an empty name or value")
@@ -66,7 +71,7 @@ func (pgSQL *pgSQL) InsertKeyValue(key, value string) (err error) {
 }
 
 // GetValue reads a single key / value tuple and returns an empty string if the key doesn't exist.
-func (pgSQL *pgSQL) GetKeyValue(key string) (string, error) {
+func (pgSQL *kv) GetKeyValue(key string) (string, error) {
 	defer observeQueryTime("GetKeyValue", "all", time.Now())
 
 	var value string

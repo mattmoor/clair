@@ -32,11 +32,10 @@ func TestNotification(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	// TODO(mattmoor): Wrap in a notification type.
 	b.ns = &ns{b}
-	b.vulnz = &vulnz{b}
-	b.layerz = &layerz{b}
-	datastore := b
+	vulnz := &vulnz{b}
+	layerz := &layerz{b}
+	datastore := &notificationz{b, vulnz, layerz}
 
 	// Try to get a notification when there is none.
 	_, err = datastore.GetAvailableNotification(time.Second)

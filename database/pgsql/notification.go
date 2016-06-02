@@ -19,13 +19,23 @@ import (
 	"time"
 
 	"github.com/coreos/clair/services"
+	"github.com/coreos/clair/services/layers"
+	"github.com/coreos/clair/services/vulnerabilities"
 	cerrors "github.com/coreos/clair/utils/errors"
 	"github.com/guregu/null/zero"
 	"github.com/pborman/uuid"
 )
 
+// notificationz implements notifications.Service
+type notificationz struct {
+	*pgSQL
+	vulnz  vulnerabilities.Service
+	layerz layers.Service
+}
+
 // do it in tx so we won't insert/update a vuln without notification and vice-versa.
 // name and created doesn't matter.
+// TODO(mattmoor): This should be made explicit and non-transactional.
 func createNotification(tx *sql.Tx, oldVulnerabilityID, newVulnerabilityID int) error {
 	defer observeQueryTime("createNotification", "all", time.Now())
 
@@ -43,7 +53,7 @@ func createNotification(tx *sql.Tx, oldVulnerabilityID, newVulnerabilityID int) 
 
 // Get one available notification name (!locked && !deleted && (!notified || notified_but_timed-out)).
 // Does not fill new/old vuln.
-func (pgSQL *pgSQL) GetAvailableNotification(renotifyInterval time.Duration) (services.VulnerabilityNotification, error) {
+func (pgSQL *notificationz) GetAvailableNotification(renotifyInterval time.Duration) (services.VulnerabilityNotification, error) {
 	defer observeQueryTime("GetAvailableNotification", "all", time.Now())
 
 	before := time.Now().Add(-renotifyInterval)
@@ -53,7 +63,7 @@ func (pgSQL *pgSQL) GetAvailableNotification(renotifyInterval time.Duration) (se
 	return notification, handleError("searchNotificationAvailable", err)
 }
 
-func (pgSQL *pgSQL) GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error) {
+func (pgSQL *notificationz) GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error) {
 	defer observeQueryTime("GetNotification", "all", time.Now())
 
 	// Get Notification.
@@ -86,7 +96,7 @@ func (pgSQL *pgSQL) GetNotification(name string, limit int, page services.Vulner
 	return notification, page, nil
 }
 
-func (pgSQL *pgSQL) scanNotification(row *sql.Row, hasVulns bool) (services.VulnerabilityNotification, error) {
+func (pgSQL *notificationz) scanNotification(row *sql.Row, hasVulns bool) (services.VulnerabilityNotification, error) {
 	var notification services.VulnerabilityNotification
 	var created zero.Time
 	var notified zero.Time
@@ -148,7 +158,7 @@ func (pgSQL *pgSQL) scanNotification(row *sql.Row, hasVulns bool) (services.Vuln
 // limit -1: won't do anything
 // limit 0: will just get the startID of the second page
 // TODO(mattmoor): I believe this truly belongs as a distinct API on layers.Service
-func (pgSQL *pgSQL) loadLayerIntroducingVulnerability(vulnerability *services.Vulnerability, limit, startID int) (int, error) {
+func (pgSQL *notificationz) loadLayerIntroducingVulnerability(vulnerability *services.Vulnerability, limit, startID int) (int, error) {
 	tf := time.Now()
 
 	if vulnerability == nil {
@@ -199,7 +209,7 @@ func (pgSQL *pgSQL) loadLayerIntroducingVulnerability(vulnerability *services.Vu
 	return nextID, nil
 }
 
-func (pgSQL *pgSQL) SetNotificationNotified(name string) error {
+func (pgSQL *notificationz) SetNotificationNotified(name string) error {
 	defer observeQueryTime("SetNotificationNotified", "all", time.Now())
 
 	if _, err := pgSQL.Exec(updatedNotificationNotified, name); err != nil {
@@ -208,7 +218,7 @@ func (pgSQL *pgSQL) SetNotificationNotified(name string) error {
 	return nil
 }
 
-func (pgSQL *pgSQL) DeleteNotification(name string) error {
+func (pgSQL *notificationz) DeleteNotification(name string) error {
 	defer observeQueryTime("DeleteNotification", "all", time.Now())
 
 	result, err := pgSQL.Exec(removeNotification, name)

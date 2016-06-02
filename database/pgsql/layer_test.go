@@ -33,8 +33,7 @@ func TestFindLayer(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	b.ns = &ns{b}
-	datastore := &layerz{b}
+	datastore := &layerz{&featurez{b, &ns{b}}}
 
 	// Layer-0: no parent, no namespace, no feature, no vulnerability
 	layer, err := datastore.FindLayer("layer-0", false, false)
@@ -112,8 +111,7 @@ func TestInsertLayer(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	b.ns = &ns{b}
-	datastore := &layerz{b}
+	datastore := &layerz{&featurez{b, &ns{b}}}
 
 	// Insert invalid layer.
 	testInsertLayerInvalid(t, datastore)

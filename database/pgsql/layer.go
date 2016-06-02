@@ -26,7 +26,7 @@ import (
 
 // layerz implements layers.Service
 type layerz struct {
-	*pgSQL
+	*featurez
 }
 
 func (pgSQL *layerz) FindLayer(name string, withFeatures, withVulnerabilities bool) (services.Layer, error) {

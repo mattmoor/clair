@@ -19,11 +19,17 @@ import (
 	"time"
 
 	"github.com/coreos/clair/services"
+	"github.com/coreos/clair/services/namespaces"
 	cerrors "github.com/coreos/clair/utils/errors"
 	"github.com/coreos/clair/utils/types"
 )
 
-func (pgSQL *pgSQL) insertFeature(feature services.Feature) (int, error) {
+type featurez struct {
+	*pgSQL
+	ns namespaces.Service
+}
+
+func (pgSQL *featurez) insertFeature(feature services.Feature) (int, error) {
 	if feature.Name == "" {
 		return 0, cerrors.NewBadRequestError("could not find/insert invalid Feature")
 	}
@@ -61,7 +67,7 @@ func (pgSQL *pgSQL) insertFeature(feature services.Feature) (int, error) {
 	return id, nil
 }
 
-func (pgSQL *pgSQL) insertFeatureVersion(featureVersion services.FeatureVersion) (id int, err error) {
+func (pgSQL *featurez) insertFeatureVersion(featureVersion services.FeatureVersion) (id int, err error) {
 	if featureVersion.Version.String() == "" {
 		return 0, cerrors.NewBadRequestError("could not find/insert invalid FeatureVersion")
 	}
@@ -177,7 +183,7 @@ func (pgSQL *pgSQL) insertFeatureVersion(featureVersion services.FeatureVersion)
 }
 
 // TODO(Quentin-M): Batch me
-func (pgSQL *pgSQL) insertFeatureVersions(featureVersions []services.FeatureVersion) ([]int, error) {
+func (pgSQL *featurez) insertFeatureVersions(featureVersions []services.FeatureVersion) ([]int, error) {
 	IDs := make([]int, 0, len(featureVersions))
 
 	for i := 0; i < len(featureVersions); i++ {

@@ -32,9 +32,8 @@ func TestNotification(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	b.ns = &ns{b}
-	vulnz := &vulnz{b}
-	layerz := &layerz{b}
+	vulnz := &vulnz{&featurez{b, &ns{b}}}
+	layerz := &layerz{&featurez{b, &ns{b}}}
 	datastore := &notificationz{b, vulnz, layerz}
 
 	// Try to get a notification when there is none.

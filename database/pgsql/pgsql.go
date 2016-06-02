@@ -101,11 +101,11 @@ func init() {
 			return nil, err
 		}
 		// TODO(mattmoor): Make vulnerabilities.Open explicitly depend on namespaces.Service
-		b.ns, err = namespaces.Open(cfg)
+		ns, err := namespaces.Open(cfg)
 		if err != nil {
 			return nil, err
 		}
-		return &vulnz{b}, nil
+		return &vulnz{&featurez{b, ns}}, nil
 	})
 	layers.Register("pgsql", func(cfg config.RegistrableComponentConfig) (layers.Service, error) {
 		b, err := openDatabase(cfg)
@@ -113,11 +113,11 @@ func init() {
 			return nil, err
 		}
 		// TODO(mattmoor): Make layers.Open explicitly depend on namespaces.Service
-		b.ns, err = namespaces.Open(cfg)
+		ns, err := namespaces.Open(cfg)
 		if err != nil {
 			return nil, err
 		}
-		return &layerz{b}, nil
+		return &layerz{&featurez{b, ns}}, nil
 	})
 	notifications.Register("pgsql", func(cfg config.RegistrableComponentConfig) (notifications.Service, error) {
 		b, err := openDatabase(cfg)
@@ -149,7 +149,6 @@ type pgSQL struct {
 	*sql.DB
 	cache  *lru.ARCCache
 	config Config
-	ns     namespaces.Service
 }
 
 // Close closes the database and destroys if ManageDatabaseLifecycle has been specified in

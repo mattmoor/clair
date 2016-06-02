@@ -24,13 +24,13 @@ import (
 )
 
 func TestInsertFeature(t *testing.T) {
-	datastore, err := openDatabaseForTest("InsertFeature", false)
+	b, err := openDatabaseForTest("InsertFeature", false)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer datastore.Close()
-	datastore.ns = &ns{datastore}
+	defer b.Close()
+	datastore := &featurez{b, &ns{b}}
 
 	// Invalid Feature.
 	id0, err := datastore.insertFeature(services.Feature{})

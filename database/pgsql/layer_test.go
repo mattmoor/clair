@@ -33,9 +33,8 @@ func TestFindLayer(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	// TODO(mattmoor): Wrap in a layer type.
 	b.ns = &ns{b}
-	datastore := b
+	datastore := &layerz{b}
 
 	// Layer-0: no parent, no namespace, no feature, no vulnerability
 	layer, err := datastore.FindLayer("layer-0", false, false)
@@ -113,9 +112,8 @@ func TestInsertLayer(t *testing.T) {
 		return
 	}
 	defer b.Close()
-	// TODO(mattmoor): Wrap in a layer type.
 	b.ns = &ns{b}
-	datastore := b
+	datastore := &layerz{b}
 
 	// Insert invalid layer.
 	testInsertLayerInvalid(t, datastore)

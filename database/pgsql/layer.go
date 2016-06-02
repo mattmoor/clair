@@ -24,7 +24,12 @@ import (
 	"github.com/guregu/null/zero"
 )
 
-func (pgSQL *pgSQL) FindLayer(name string, withFeatures, withVulnerabilities bool) (services.Layer, error) {
+// layerz implements layers.Service
+type layerz struct {
+	*pgSQL
+}
+
+func (pgSQL *layerz) FindLayer(name string, withFeatures, withVulnerabilities bool) (services.Layer, error) {
 	subquery := "all"
 	if withFeatures {
 		subquery += "/features"
@@ -209,7 +214,7 @@ func loadAffectedBy(tx *sql.Tx, featureVersions []services.FeatureVersion) error
 // (happens when Feature detectors relies on the detected layer Namespace). However, if the listed
 // Feature has the same Name/Version as its parent, InsertLayer considers that the Feature hasn't
 // been modified.
-func (pgSQL *pgSQL) InsertLayer(layer services.Layer) error {
+func (pgSQL *layerz) InsertLayer(layer services.Layer) error {
 	tf := time.Now()
 
 	// Verify parameters
@@ -314,7 +319,7 @@ func (pgSQL *pgSQL) InsertLayer(layer services.Layer) error {
 	return nil
 }
 
-func (pgSQL *pgSQL) updateDiffFeatureVersions(tx *sql.Tx, layer, existingLayer *services.Layer) error {
+func (pgSQL *layerz) updateDiffFeatureVersions(tx *sql.Tx, layer, existingLayer *services.Layer) error {
 	// add and del are the FeatureVersion diff we should insert.
 	var add []services.FeatureVersion
 	var del []services.FeatureVersion
@@ -383,7 +388,7 @@ func createNV(features []services.FeatureVersion) (map[string]*services.FeatureV
 	return mapNV, sliceNV
 }
 
-func (pgSQL *pgSQL) DeleteLayer(name string) error {
+func (pgSQL *layerz) DeleteLayer(name string) error {
 	defer observeQueryTime("DeleteLayer", "all", time.Now())
 
 	result, err := pgSQL.Exec(removeLayer, name)

@@ -95,42 +95,37 @@ func init() {
 		}
 		return &kv{b}, nil
 	})
-	vulnerabilities.Register("pgsql", func(cfg config.RegistrableComponentConfig) (vulnerabilities.Service, error) {
+	vulnerabilities.Register("pgsql", func(cfg config.RegistrableComponentConfig, names namespaces.Service) (vulnerabilities.Service, error) {
 		b, err := openDatabase(cfg)
 		if err != nil {
 			return nil, err
 		}
-		// TODO(mattmoor): Make vulnerabilities.Open explicitly depend on namespaces.Service
-		ns, err := namespaces.Open(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return &vulnz{&featurez{b, ns}}, nil
+		return &vulnz{&featurez{b, names}}, nil
 	})
-	layers.Register("pgsql", func(cfg config.RegistrableComponentConfig) (layers.Service, error) {
+	layers.Register("pgsql", func(cfg config.RegistrableComponentConfig, names namespaces.Service) (layers.Service, error) {
 		b, err := openDatabase(cfg)
 		if err != nil {
 			return nil, err
 		}
-		// TODO(mattmoor): Make layers.Open explicitly depend on namespaces.Service
-		ns, err := namespaces.Open(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return &layerz{&featurez{b, ns}}, nil
+		return &layerz{&featurez{b, names}}, nil
 	})
 	notifications.Register("pgsql", func(cfg config.RegistrableComponentConfig) (notifications.Service, error) {
 		b, err := openDatabase(cfg)
 		if err != nil {
 			return nil, err
 		}
+		// TODO(mattmoor): Remove after below TODOs.
+		names, err := namespaces.Open(cfg)
+		if err != nil {
+			return nil, err
+		}
 		// TODO(mattmoor): Make notifications.Open explicitly depend on vulnerabilities.Service
-		vulnz, err := vulnerabilities.Open(cfg)
+		vulnz, err := vulnerabilities.Open(cfg, names)
 		if err != nil {
 			return nil, err
 		}
 		// TODO(mattmoor): Make notifications.Open explicitly depend on layers.Service
-		layerz, err := layers.Open(cfg)
+		layerz, err := layers.Open(cfg, names)
 		if err != nil {
 			return nil, err
 		}

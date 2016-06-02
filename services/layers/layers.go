@@ -20,9 +20,10 @@ import (
 
 	"github.com/coreos/clair/config"
 	"github.com/coreos/clair/services"
+	"github.com/coreos/clair/services/namespaces"
 )
 
-type Driver func(cfg config.RegistrableComponentConfig) (Service, error)
+type Driver func(cfg config.RegistrableComponentConfig, names namespaces.Service) (Service, error)
 
 var layerDrivers = make(map[string]Driver)
 
@@ -41,13 +42,13 @@ func Register(name string, driver Driver) {
 }
 
 // Open opens a Datastore specified by a configuration.
-func Open(cfg config.RegistrableComponentConfig) (ls Service, err error) {
+func Open(cfg config.RegistrableComponentConfig, names namespaces.Service) (ls Service, err error) {
 	driver, ok := layerDrivers[cfg.Type]
 	if !ok {
 		err = fmt.Errorf("layers: unknown Driver %q (forgotten configuration or import?)", cfg.Type)
 		return
 	}
-	return driver(cfg)
+	return driver(cfg, names)
 }
 
 type Service interface {

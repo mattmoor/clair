@@ -59,23 +59,23 @@ func Boot(config *config.Config) {
 	}
 	defer kvs.Close()
 
-	vuln, err := vulnerabilities.Open(config.Database)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer vuln.Close()
-
-	layers, err := layers.Open(config.Database)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer layers.Close()
-
 	names, err := namespaces.Open(config.Database)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer names.Close()
+
+	vuln, err := vulnerabilities.Open(config.Database, names)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer vuln.Close()
+
+	layers, err := layers.Open(config.Database, names)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer layers.Close()
 
 	ns, err := notifications.Open(config.Database)
 	if err != nil {

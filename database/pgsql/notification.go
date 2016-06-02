@@ -33,19 +33,16 @@ type notificationz struct {
 	layerz layers.Service
 }
 
-// do it in tx so we won't insert/update a vuln without notification and vice-versa.
-// name and created doesn't matter.
-// TODO(mattmoor): This should be made explicit and non-transactional.
-func createNotification(tx *sql.Tx, oldVulnerabilityID, newVulnerabilityID int) error {
+// CreateNotification from the vulnerability change.
+func (pgSQL *notificationz) CreateNotification(oldVulnerability, newVulnerability services.Model) error {
 	defer observeQueryTime("createNotification", "all", time.Now())
 
 	// Insert Notification.
-	oldVulnerabilityNullableID := sql.NullInt64{Int64: int64(oldVulnerabilityID), Valid: oldVulnerabilityID != 0}
-	newVulnerabilityNullableID := sql.NullInt64{Int64: int64(newVulnerabilityID), Valid: newVulnerabilityID != 0}
-	_, err := tx.Exec(insertNotification, uuid.New(), oldVulnerabilityNullableID, newVulnerabilityNullableID)
+	oldVulnerabilityNullableID := sql.NullInt64{Int64: int64(oldVulnerability.ID), Valid: oldVulnerability.ID != 0}
+	newVulnerabilityNullableID := sql.NullInt64{Int64: int64(newVulnerability.ID), Valid: newVulnerability.ID != 0}
+	_, err := pgSQL.Exec(insertNotification, uuid.New(), oldVulnerabilityNullableID, newVulnerabilityNullableID)
 	if err != nil {
-		tx.Rollback()
-		return handleError("insertNotification", err)
+		return handleError("CreateNotification", err)
 	}
 
 	return nil

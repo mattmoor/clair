@@ -112,7 +112,7 @@ func TestNotification(t *testing.T) {
 			},
 		},
 	}
-	assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1}, true))
+	assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1}, datastore))
 
 	// Get the notification associated to the previously inserted vulnerability.
 	notification, err := datastore.GetAvailableNotification(time.Second)
@@ -176,7 +176,7 @@ func TestNotification(t *testing.T) {
 		},
 	}
 
-	if assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1b}, true)) {
+	if assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1b}, datastore)) {
 		notification, err = datastore.GetAvailableNotification(time.Second)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, notification.Name)
@@ -204,7 +204,7 @@ func TestNotification(t *testing.T) {
 	}
 
 	// Delete a vulnerability and verify the notification.
-	if assert.Nil(t, datastore.vulnz.DeleteVulnerability(v1b.Namespace.Name, v1b.Name)) {
+	if assert.Nil(t, datastore.vulnz.DeleteVulnerability(v1b.Namespace.Name, v1b.Name, datastore)) {
 		notification, err = datastore.GetAvailableNotification(time.Second)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, notification.Name)

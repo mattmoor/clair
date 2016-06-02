@@ -76,4 +76,44 @@ type Service interface {
 	// DeleteNotification marks a Notification as deleted, and thus, makes it unavailable for
 	// GetAvailableNotification.
 	DeleteNotification(name string) error
+
+	// CreateNotification inserts a notification into the backing store with the change denoted by the old
+	// and new vulnerability identifiers.
+	CreateNotification(oldVulnerability, newVulnerability services.Model) error
+}
+
+type Null struct {
+}
+
+// Ping implements services.Base
+func (n *Null) Ping() bool {
+	return true
+}
+
+// Close implements services.Base
+func (n *Null) Close() {}
+
+// GetAvailableNotification implements Service
+func (n *Null) GetAvailableNotification(renotifyInterval time.Duration) (services.VulnerabilityNotification, error) {
+	return services.VulnerabilityNotification{}, services.ErrBackendException
+}
+
+// GetNotification implements Service
+func (n *Null) GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error) {
+	return services.VulnerabilityNotification{}, services.VulnerabilityNotificationPageNumber{}, services.ErrBackendException
+}
+
+// SetNotificationNotified implements Service
+func (n *Null) SetNotificationNotified(name string) error {
+	return services.ErrBackendException
+}
+
+// DeleteNotification implements Service
+func (n *Null) DeleteNotification(name string) error {
+	return services.ErrBackendException
+}
+
+// CreateNotification reads and discards the notification.
+func (n *Null) CreateNotification(oldVulnerability, newVulnerability services.Model) error {
+	return nil
 }

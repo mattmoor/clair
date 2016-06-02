@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/clair/config"
 	"github.com/coreos/clair/services"
+	"github.com/coreos/clair/services/notifications"
 )
 
 type Driver func(cfg config.RegistrableComponentConfig) (Service, error)
@@ -70,22 +71,22 @@ type Service interface {
 	// a Vulnerability can only be fixed in one Version. This is true because Vulnerabilities and
 	// Features are Namespaced (i.e. specific to one operating system).
 	// Each vulnerability insertion or update has to create a Notification that will contain the
-	// old and the updated Vulnerability, unless createNotification equals to true.
-	InsertVulnerabilities(vulnerabilities []services.Vulnerability, createNotification bool) error
+	// old and the updated Vulnerability.
+	InsertVulnerabilities(vulnerabilities []services.Vulnerability, notez notifications.Service) error
 	// FindVulnerability retrieves a Vulnerability from the database, including the FixedIn list.
 	FindVulnerability(namespaceName, name string) (services.Vulnerability, error)
 	// FindVulnerabilityByID retrieves a Vulnerability from the database, including the FixedIn list.
 	FindVulnerabilityByID(id services.Model) (services.Vulnerability, error)
 	// DeleteVulnerability removes a Vulnerability from the database.
 	// It has to create a Notification that will contain the old Vulnerability.
-	DeleteVulnerability(namespaceName, name string) error
+	DeleteVulnerability(namespaceName, name string, notez notifications.Service) error
 	// InsertVulnerabilityFixes adds new FixedIn Feature or update the Versions of existing ones to
 	// the specified Vulnerability in the database.
 	// It has has to create a Notification that will contain the old and the updated Vulnerability.
-	InsertVulnerabilityFixes(vulnerabilityNamespace, vulnerabilityName string, fixes []services.FeatureVersion) error
+	InsertVulnerabilityFixes(vulnerabilityNamespace, vulnerabilityName string, fixes []services.FeatureVersion, notez notifications.Service) error
 	// DeleteVulnerabilityFix removes a FixedIn Feature from the specified Vulnerability in the
 	// database. It can be used to store the fact that a Vulnerability no longer affects the given
 	// Feature in any Version.
 	// It has has to create a Notification that will contain the old and the updated Vulnerability.
-	DeleteVulnerabilityFix(vulnerabilityNamespace, vulnerabilityName, featureName string) error
+	DeleteVulnerabilityFix(vulnerabilityNamespace, vulnerabilityName, featureName string, notez notifications.Service) error
 }

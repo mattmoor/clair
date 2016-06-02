@@ -96,7 +96,7 @@ func Boot(config *config.Config) {
 
 	// Start updater
 	st.Begin()
-	go updater.Run(config.Updater, ls, kvs, vuln, st)
+	go updater.Run(config.Updater, ls, kvs, vuln, ns, st)
 
 	// Wait for interruption and shutdown gracefully.
 	waitForSignals(syscall.SIGINT, syscall.SIGTERM)

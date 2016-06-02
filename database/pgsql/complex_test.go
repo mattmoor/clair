@@ -44,6 +44,7 @@ func TestRaceAffects(t *testing.T) {
 	}
 	defer b.Close()
 	datastore := &vulnz{&featurez{b, &ns{b}}}
+	notez := &notificationz{b, datastore, &layerz{&featurez{b, &ns{b}}}}
 
 	// Insert the Feature on which we'll work.
 	feature := services.Feature{
@@ -104,7 +105,7 @@ func TestRaceAffects(t *testing.T) {
 		defer wg.Done()
 		for _, vulnerabilitiesM := range vulnerabilities {
 			for _, vulnerability := range vulnerabilitiesM {
-				err = datastore.InsertVulnerabilities([]services.Vulnerability{vulnerability}, true)
+				err = datastore.InsertVulnerabilities([]services.Vulnerability{vulnerability}, notez)
 				assert.Nil(t, err)
 			}
 		}

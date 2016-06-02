@@ -267,7 +267,7 @@ func postVulnerability(w http.ResponseWriter, r *http.Request, p httprouter.Para
 		return postVulnerabilityRoute, http.StatusBadRequest
 	}
 
-	err = ctx.VulnerabilityStore.InsertVulnerabilities([]services.Vulnerability{vuln}, true)
+	err = ctx.VulnerabilityStore.InsertVulnerabilities([]services.Vulnerability{vuln}, ctx.NotificationState)
 	if err != nil {
 		switch err.(type) {
 		case *cerrors.ErrBadRequest:
@@ -328,7 +328,7 @@ func putVulnerability(w http.ResponseWriter, r *http.Request, p httprouter.Param
 	vuln.Namespace.Name = p.ByName("namespaceName")
 	vuln.Name = p.ByName("vulnerabilityName")
 
-	err = ctx.VulnerabilityStore.InsertVulnerabilities([]services.Vulnerability{vuln}, true)
+	err = ctx.VulnerabilityStore.InsertVulnerabilities([]services.Vulnerability{vuln}, ctx.NotificationState)
 	if err != nil {
 		switch err.(type) {
 		case *cerrors.ErrBadRequest:
@@ -345,7 +345,7 @@ func putVulnerability(w http.ResponseWriter, r *http.Request, p httprouter.Param
 }
 
 func deleteVulnerability(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *context.RouteContext) (string, int) {
-	err := ctx.VulnerabilityStore.DeleteVulnerability(p.ByName("namespaceName"), p.ByName("vulnerabilityName"))
+	err := ctx.VulnerabilityStore.DeleteVulnerability(p.ByName("namespaceName"), p.ByName("vulnerabilityName"), ctx.NotificationState)
 	if err == cerrors.ErrNotFound {
 		writeResponse(w, r, http.StatusNotFound, VulnerabilityEnvelope{Error: &Error{err.Error()}})
 		return deleteVulnerabilityRoute, http.StatusNotFound
@@ -397,7 +397,7 @@ func putFix(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *co
 		return putFixRoute, http.StatusBadRequest
 	}
 
-	err = ctx.VulnerabilityStore.InsertVulnerabilityFixes(p.ByName("vulnerabilityNamespace"), p.ByName("vulnerabilityName"), []services.FeatureVersion{dbFix})
+	err = ctx.VulnerabilityStore.InsertVulnerabilityFixes(p.ByName("vulnerabilityNamespace"), p.ByName("vulnerabilityName"), []services.FeatureVersion{dbFix}, ctx.NotificationState)
 	if err != nil {
 		switch err.(type) {
 		case *cerrors.ErrBadRequest:
@@ -418,7 +418,7 @@ func putFix(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *co
 }
 
 func deleteFix(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *context.RouteContext) (string, int) {
-	err := ctx.VulnerabilityStore.DeleteVulnerabilityFix(p.ByName("vulnerabilityNamespace"), p.ByName("vulnerabilityName"), p.ByName("fixName"))
+	err := ctx.VulnerabilityStore.DeleteVulnerabilityFix(p.ByName("vulnerabilityNamespace"), p.ByName("vulnerabilityName"), p.ByName("fixName"), ctx.NotificationState)
 	if err == cerrors.ErrNotFound {
 		writeResponse(w, r, http.StatusNotFound, FeatureEnvelope{Error: &Error{err.Error()}})
 		return deleteFixRoute, http.StatusNotFound

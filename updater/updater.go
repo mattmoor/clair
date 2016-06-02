@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/clair/services"
 	"github.com/coreos/clair/services/keyvalue"
 	"github.com/coreos/clair/services/locks"
+	"github.com/coreos/clair/services/notifications"
 	"github.com/coreos/clair/services/vulnerabilities"
 	"github.com/coreos/clair/utils"
 	"github.com/coreos/pkg/capnslog"
@@ -68,7 +69,7 @@ func init() {
 }
 
 // Run updates the vulnerability database at regular intervals.
-func Run(config *config.UpdaterConfig, locksvc locks.Service, kvstore keyvalue.Service, vulnstore vulnerabilities.Service, st *utils.Stopper) {
+func Run(config *config.UpdaterConfig, locksvc locks.Service, kvstore keyvalue.Service, vulnstore vulnerabilities.Service, notificationz notifications.Service, st *utils.Stopper) {
 	defer st.End()
 
 	// Do not run the updater if there is no config or if the interval is 0.
@@ -94,6 +95,13 @@ func Run(config *config.UpdaterConfig, locksvc locks.Service, kvstore keyvalue.S
 			nextUpdate = lastUpdate.Add(config.Interval)
 		}
 
+		// We only send notifications after the initial import, so if this is the first
+		// import then send any notifications to a null notification impl.
+		notez := notificationz
+		if firstUpdate {
+			notez = &notifications.Null{}
+		}
+
 		// If the next update timer is in the past, then try to update.
 		if nextUpdate.Before(time.Now().UTC()) {
 			// Attempt to get a lock on the the update.
@@ -103,7 +111,7 @@ func Run(config *config.UpdaterConfig, locksvc locks.Service, kvstore keyvalue.S
 				// Launch update in a new go routine.
 				doneC := make(chan bool, 1)
 				go func() {
-					Update(kvstore, vulnstore, firstUpdate)
+					Update(kvstore, vulnstore, notez)
 					doneC <- true
 				}()
 
@@ -162,7 +170,7 @@ func Run(config *config.UpdaterConfig, locksvc locks.Service, kvstore keyvalue.S
 
 // Update fetches all the vulnerabilities from the registered fetchers, upserts
 // them into the database and then sends notifications.
-func Update(kvstore keyvalue.Service, vulnstore vulnerabilities.Service, firstUpdate bool) {
+func Update(kvstore keyvalue.Service, vulnstore vulnerabilities.Service, notez notifications.Service) {
 	defer setUpdaterDuration(time.Now())
 
 	log.Info("updating vulnerabilities")
@@ -172,7 +180,7 @@ func Update(kvstore keyvalue.Service, vulnstore vulnerabilities.Service, firstUp
 
 	// Insert vulnerabilities.
 	log.Tracef("inserting %d vulnerabilities for update", len(vulnerabilities))
-	err := vulnstore.InsertVulnerabilities(vulnerabilities, !firstUpdate)
+	err := vulnstore.InsertVulnerabilities(vulnerabilities, notez)
 	if err != nil {
 		promUpdaterErrorsTotal.Inc()
 		log.Errorf("an error occured when inserting vulnerabilities for update: %s", err)

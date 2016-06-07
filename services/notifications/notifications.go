@@ -61,13 +61,10 @@ type Service interface {
 	// same Name should not be returned.
 	GetAvailableNotification(renotifyInterval time.Duration) (services.VulnerabilityNotification, error)
 
-	// GetNotification returns a Notification, including its OldVulnerability and NewVulnerability
-	// fields. On these Vulnerabilities, LayersIntroducingVulnerability should be filled with
-	// every Layer that introduces the Vulnerability (i.e. adds at least one affected FeatureVersion).
-	// The Limit and page parameters are used to paginate LayersIntroducingVulnerability. The first
-	// given page should be VulnerabilityNotificationFirstPage. The function will then return the next
-	// availage page. If there is no more page, NoVulnerabilityNotificationPage has to be returned.
-	GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error)
+	// GetNotification returns a Notification.
+	// OldVulnerability and NewVulnerability will have only their Model populated with the services.Model of
+	// the Old/New Vulnerability respectively, but the burden of fetching these is on the caller of this API.
+	GetNotification(name string) (services.VulnerabilityNotification, error)
 
 	// SetNotificationNotified marks a Notification as notified and thus, makes it unavailable for
 	// GetAvailableNotification, until the renotify duration is elapsed.
@@ -99,8 +96,8 @@ func (n *Null) GetAvailableNotification(renotifyInterval time.Duration) (service
 }
 
 // GetNotification implements Service
-func (n *Null) GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error) {
-	return services.VulnerabilityNotification{}, services.VulnerabilityNotificationPageNumber{}, services.ErrBackendException
+func (n *Null) GetNotification(name string) (services.VulnerabilityNotification, error) {
+	return services.VulnerabilityNotification{}, services.ErrBackendException
 }
 
 // SetNotificationNotified implements Service

@@ -464,7 +464,7 @@ func getNotification(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		pageToken = string(pageTokenBytes)
 	}
 
-	dbNotification, nextPage, err := ctx.NotificationState.GetNotification(p.ByName("notificationName"), limit, page)
+	dbNotification, err := ctx.NotificationState.GetNotification(p.ByName("notificationName"))
 	if err == cerrors.ErrNotFound {
 		writeResponse(w, r, http.StatusNotFound, NotificationEnvelope{Error: &Error{err.Error()}})
 		return deleteNotificationRoute, http.StatusNotFound
@@ -473,7 +473,45 @@ func getNotification(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		return getNotificationRoute, http.StatusInternalServerError
 	}
 
-	notification := NotificationFromDatabaseModel(dbNotification, limit, pageToken, nextPage, ctx.Config.PaginationKey)
+	// If there was a {old,new} vulnerability identified, then fetch them.
+	if dbNotification.OldVulnerability != nil {
+		vulnerability, err := ctx.VulnerabilityStore.FindVulnerabilityByID(dbNotification.OldVulnerability.Model)
+		if err != nil {
+			writeResponse(w, r, http.StatusInternalServerError, NotificationEnvelope{Error: &Error{err.Error()}})
+			return getNotificationRoute, http.StatusInternalServerError
+		}
+		dbNotification.OldVulnerability = &vulnerability
+
+		// Load vulnerabilities' LayersIntroducingVulnerability.
+		page.OldVulnerability, err = ctx.LayerService.LoadLayerIntroducingVulnerability(
+			&vulnerability,
+			limit,
+			page.OldVulnerability,
+		)
+		if err != nil {
+			writeResponse(w, r, http.StatusInternalServerError, NotificationEnvelope{Error: &Error{err.Error()}})
+			return getNotificationRoute, http.StatusInternalServerError
+		}
+	}
+	if dbNotification.NewVulnerability != nil {
+		vulnerability, err := ctx.VulnerabilityStore.FindVulnerabilityByID(dbNotification.NewVulnerability.Model)
+		if err != nil {
+			writeResponse(w, r, http.StatusInternalServerError, NotificationEnvelope{Error: &Error{err.Error()}})
+			return getNotificationRoute, http.StatusInternalServerError
+		}
+		dbNotification.NewVulnerability = &vulnerability
+		page.NewVulnerability, err = ctx.LayerService.LoadLayerIntroducingVulnerability(
+			&vulnerability,
+			limit,
+			page.NewVulnerability,
+		)
+		if err != nil {
+			writeResponse(w, r, http.StatusInternalServerError, NotificationEnvelope{Error: &Error{err.Error()}})
+			return getNotificationRoute, http.StatusInternalServerError
+		}
+	}
+
+	notification := NotificationFromDatabaseModel(dbNotification, limit, pageToken, page, ctx.Config.PaginationKey)
 
 	writeResponse(w, r, http.StatusOK, NotificationEnvelope{Notification: &notification})
 	return getNotificationRoute, http.StatusOK

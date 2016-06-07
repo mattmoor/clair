@@ -407,3 +407,55 @@ func (pgSQL *layerz) DeleteLayer(name string) error {
 
 	return nil
 }
+
+// LoadLayerIntroducingVulnerability implements layers.Service
+func (pgSQL *layerz) LoadLayerIntroducingVulnerability(vulnerability *services.Vulnerability, limit, startID int) (int, error) {
+	tf := time.Now()
+
+	if vulnerability == nil {
+		return -1, nil
+	}
+
+	// A startID equals to -1 means that we reached the end already.
+	if startID == -1 || limit == -1 {
+		return -1, nil
+	}
+
+	// We do `defer observeQueryTime` here because we don't want to observe invalid calls.
+	defer observeQueryTime("loadLayerIntroducingVulnerability", "all", tf)
+
+	// Query with limit + 1, the last item will be used to know the next starting ID.
+	rows, err := pgSQL.Query(searchNotificationLayerIntroducingVulnerability,
+		vulnerability.ID, startID, limit+1)
+	if err != nil {
+		return 0, handleError("searchNotificationLayerIntroducingVulnerability", err)
+	}
+	defer rows.Close()
+
+	var layers []services.Layer
+	for rows.Next() {
+		var layer services.Layer
+
+		if err := rows.Scan(&layer.ID, &layer.Name); err != nil {
+			return -1, handleError("searchNotificationLayerIntroducingVulnerability.Scan()", err)
+		}
+
+		layers = append(layers, layer)
+	}
+	if err = rows.Err(); err != nil {
+		return -1, handleError("searchNotificationLayerIntroducingVulnerability.Rows()", err)
+	}
+
+	size := limit
+	if len(layers) < limit {
+		size = len(layers)
+	}
+	vulnerability.LayersIntroducingVulnerability = layers[:size]
+
+	nextID := -1
+	if len(layers) > limit {
+		nextID = layers[limit].ID
+	}
+
+	return nextID, nil
+}

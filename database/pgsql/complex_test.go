@@ -44,7 +44,7 @@ func TestRaceAffects(t *testing.T) {
 	}
 	defer b.Close()
 	datastore := &vulnz{&featurez{b, &ns{b}}}
-	notez := &notificationz{b, datastore, &layerz{&featurez{b, &ns{b}}}}
+	notez := &notificationz{b}
 
 	// Insert the Feature on which we'll work.
 	feature := services.Feature{

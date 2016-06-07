@@ -114,22 +114,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		// TODO(mattmoor): Remove after below TODOs.
-		names, err := namespaces.Open(cfg)
-		if err != nil {
-			return nil, err
-		}
-		// TODO(mattmoor): Make notifications.Open explicitly depend on vulnerabilities.Service
-		vulnz, err := vulnerabilities.Open(cfg, names)
-		if err != nil {
-			return nil, err
-		}
-		// TODO(mattmoor): Make notifications.Open explicitly depend on layers.Service
-		layerz, err := layers.Open(cfg, names)
-		if err != nil {
-			return nil, err
-		}
-		return &notificationz{b, vulnz, layerz}, nil
+		return &notificationz{b}, nil
 	})
 	namespaces.Register("pgsql", func(cfg config.RegistrableComponentConfig) (namespaces.Service, error) {
 		b, err := openDatabase(cfg)

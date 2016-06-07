@@ -34,7 +34,7 @@ func TestNotification(t *testing.T) {
 	defer b.Close()
 	vulnz := &vulnz{&featurez{b, &ns{b}}}
 	layerz := &layerz{&featurez{b, &ns{b}}}
-	datastore := &notificationz{b, vulnz, layerz}
+	datastore := &notificationz{b}
 
 	// Try to get a notification when there is none.
 	_, err = datastore.GetAvailableNotification(time.Second)
@@ -91,10 +91,10 @@ func TestNotification(t *testing.T) {
 		},
 	}
 
-	if !assert.Nil(t, datastore.layerz.InsertLayer(l1)) ||
-		!assert.Nil(t, datastore.layerz.InsertLayer(l2)) ||
-		!assert.Nil(t, datastore.layerz.InsertLayer(l3)) ||
-		!assert.Nil(t, datastore.layerz.InsertLayer(l4)) {
+	if !assert.Nil(t, layerz.InsertLayer(l1)) ||
+		!assert.Nil(t, layerz.InsertLayer(l2)) ||
+		!assert.Nil(t, layerz.InsertLayer(l3)) ||
+		!assert.Nil(t, layerz.InsertLayer(l4)) {
 		return
 	}
 
@@ -112,7 +112,13 @@ func TestNotification(t *testing.T) {
 			},
 		},
 	}
-	assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1}, datastore))
+	assert.Nil(t, vulnz.InsertVulnerabilities([]services.Vulnerability{v1}, datastore))
+
+	// Refetch our expected vulnerability (including Model)
+	v1, err = vulnz.FindVulnerability(v1.Namespace.Name, v1.Name)
+	if !assert.Nil(t, err) {
+		return
+	}
 
 	// Get the notification associated to the previously inserted vulnerability.
 	notification, err := datastore.GetAvailableNotification(time.Second)
@@ -131,27 +137,28 @@ func TestNotification(t *testing.T) {
 			datastore.SetNotificationNotified(notification.Name)
 		}
 
+		page := services.VulnerabilityNotificationFirstPage
+
 		// Get notification.
-		filledNotification, nextPage, err := datastore.GetNotification(notification.Name, 2, services.VulnerabilityNotificationFirstPage)
+		filledNotification, err := datastore.GetNotification(notification.Name)
 		if assert.Nil(t, err) {
-			assert.NotEqual(t, services.NoVulnerabilityNotificationPage, nextPage)
 			assert.Nil(t, filledNotification.OldVulnerability)
 
 			if assert.NotNil(t, filledNotification.NewVulnerability) {
-				assert.Equal(t, v1.Name, filledNotification.NewVulnerability.Name)
-				assert.Len(t, filledNotification.NewVulnerability.LayersIntroducingVulnerability, 2)
-			}
-		}
-
-		// Get second page.
-		filledNotification, nextPage, err = datastore.GetNotification(notification.Name, 2, nextPage)
-		if assert.Nil(t, err) {
-			assert.Equal(t, services.NoVulnerabilityNotificationPage, nextPage)
-			assert.Nil(t, filledNotification.OldVulnerability)
-
-			if assert.NotNil(t, filledNotification.NewVulnerability) {
-				assert.Equal(t, v1.Name, filledNotification.NewVulnerability.Name)
-				assert.Len(t, filledNotification.NewVulnerability.LayersIntroducingVulnerability, 1)
+				assert.Equal(t, v1.Model, filledNotification.NewVulnerability.Model)
+				vulnerability, err := vulnz.FindVulnerabilityByID(filledNotification.NewVulnerability.Model)
+				if assert.Nil(t, err) {
+					filledNotification.NewVulnerability = &vulnerability
+					page.NewVulnerability, err = layerz.LoadLayerIntroducingVulnerability(&vulnerability, 2, page.NewVulnerability)
+					if assert.Nil(t, err) {
+						assert.Len(t, vulnerability.LayersIntroducingVulnerability, 2)
+						// Get second page
+						page.NewVulnerability, err = layerz.LoadLayerIntroducingVulnerability(&vulnerability, 2, page.NewVulnerability)
+						if assert.Nil(t, err) {
+							assert.Len(t, vulnerability.LayersIntroducingVulnerability, 1)
+						}
+					}
+				}
 			}
 		}
 
@@ -176,48 +183,74 @@ func TestNotification(t *testing.T) {
 		},
 	}
 
-	if assert.Nil(t, datastore.vulnz.InsertVulnerabilities([]services.Vulnerability{v1b}, datastore)) {
-		notification, err = datastore.GetAvailableNotification(time.Second)
-		assert.Nil(t, err)
-		assert.NotEmpty(t, notification.Name)
+	if assert.Nil(t, vulnz.InsertVulnerabilities([]services.Vulnerability{v1b}, datastore)) {
+		v1b, err = vulnz.FindVulnerability(v1.Namespace.Name, v1.Name)
 
-		if assert.Nil(t, err) && assert.NotEmpty(t, notification.Name) {
-			filledNotification, nextPage, err := datastore.GetNotification(notification.Name, 2, services.VulnerabilityNotificationFirstPage)
-			if assert.Nil(t, err) {
-				if assert.NotNil(t, filledNotification.OldVulnerability) {
-					assert.Equal(t, v1.Name, filledNotification.OldVulnerability.Name)
-					assert.Equal(t, v1.Severity, filledNotification.OldVulnerability.Severity)
-					assert.Len(t, filledNotification.OldVulnerability.LayersIntroducingVulnerability, 2)
+		if assert.Nil(t, err) {
+			notification, err = datastore.GetAvailableNotification(time.Second)
+			assert.Nil(t, err)
+			assert.NotEmpty(t, notification.Name)
+
+			page := services.VulnerabilityNotificationFirstPage
+
+			if assert.Nil(t, err) && assert.NotEmpty(t, notification.Name) {
+				filledNotification, err := datastore.GetNotification(notification.Name)
+				if assert.Nil(t, err) {
+					if assert.NotNil(t, filledNotification.OldVulnerability) {
+						assert.Equal(t, v1.Model, filledNotification.OldVulnerability.Model)
+						vulnerability, err := vulnz.FindVulnerabilityByID(filledNotification.OldVulnerability.Model)
+						if assert.Nil(t, err) {
+							assert.Equal(t, v1.Severity, vulnerability.Severity)
+							page.OldVulnerability, err = layerz.LoadLayerIntroducingVulnerability(&vulnerability, 2, page.OldVulnerability)
+							if assert.Nil(t, err) {
+								assert.Len(t, vulnerability.LayersIntroducingVulnerability, 2)
+							}
+						}
+					}
+
+					if assert.NotNil(t, filledNotification.NewVulnerability) {
+						assert.Equal(t, v1b.Model, filledNotification.NewVulnerability.Model)
+						vulnerability, err := vulnz.FindVulnerabilityByID(filledNotification.NewVulnerability.Model)
+						if assert.Nil(t, err) {
+							assert.Equal(t, v1b.Severity, vulnerability.Severity)
+							page.NewVulnerability, err = layerz.LoadLayerIntroducingVulnerability(&vulnerability, 2, page.NewVulnerability)
+							if assert.Nil(t, err) {
+
+								assert.Len(t, vulnerability.LayersIntroducingVulnerability, 1)
+							}
+						}
+					}
+
+					assert.Equal(t, -1, page.NewVulnerability)
 				}
 
-				if assert.NotNil(t, filledNotification.NewVulnerability) {
-					assert.Equal(t, v1b.Name, filledNotification.NewVulnerability.Name)
-					assert.Equal(t, v1b.Severity, filledNotification.NewVulnerability.Severity)
-					assert.Len(t, filledNotification.NewVulnerability.LayersIntroducingVulnerability, 1)
-				}
-
-				assert.Equal(t, -1, nextPage.NewVulnerability)
+				assert.Nil(t, datastore.DeleteNotification(notification.Name))
 			}
-
-			assert.Nil(t, datastore.DeleteNotification(notification.Name))
 		}
 	}
 
 	// Delete a vulnerability and verify the notification.
-	if assert.Nil(t, datastore.vulnz.DeleteVulnerability(v1b.Namespace.Name, v1b.Name, datastore)) {
+	if assert.Nil(t, vulnz.DeleteVulnerability(v1b.Namespace.Name, v1b.Name, datastore)) {
 		notification, err = datastore.GetAvailableNotification(time.Second)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, notification.Name)
 
 		if assert.Nil(t, err) && assert.NotEmpty(t, notification.Name) {
-			filledNotification, _, err := datastore.GetNotification(notification.Name, 2, services.VulnerabilityNotificationFirstPage)
+			filledNotification, err := datastore.GetNotification(notification.Name)
 			if assert.Nil(t, err) {
 				assert.Nil(t, filledNotification.NewVulnerability)
 
+				page := services.VulnerabilityNotificationFirstPage
 				if assert.NotNil(t, filledNotification.OldVulnerability) {
-					assert.Equal(t, v1b.Name, filledNotification.OldVulnerability.Name)
-					assert.Equal(t, v1b.Severity, filledNotification.OldVulnerability.Severity)
-					assert.Len(t, filledNotification.OldVulnerability.LayersIntroducingVulnerability, 1)
+					assert.Equal(t, v1b.Model, filledNotification.OldVulnerability.Model)
+					vulnerability, err := vulnz.FindVulnerabilityByID(filledNotification.OldVulnerability.Model)
+					if assert.Nil(t, err) {
+						assert.Equal(t, v1b.Severity, vulnerability.Severity)
+						page.OldVulnerability, err = layerz.LoadLayerIntroducingVulnerability(&vulnerability, 2, page.OldVulnerability)
+						if assert.Nil(t, err) {
+							assert.Len(t, vulnerability.LayersIntroducingVulnerability, 1)
+						}
+					}
 				}
 			}
 

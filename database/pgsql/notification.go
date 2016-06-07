@@ -19,8 +19,6 @@ import (
 	"time"
 
 	"github.com/coreos/clair/services"
-	"github.com/coreos/clair/services/layers"
-	"github.com/coreos/clair/services/vulnerabilities"
 	cerrors "github.com/coreos/clair/utils/errors"
 	"github.com/guregu/null/zero"
 	"github.com/pborman/uuid"
@@ -29,8 +27,6 @@ import (
 // notificationz implements notifications.Service
 type notificationz struct {
 	*pgSQL
-	vulnz  vulnerabilities.Service
-	layerz layers.Service
 }
 
 // CreateNotification from the vulnerability change.
@@ -60,50 +56,28 @@ func (pgSQL *notificationz) GetAvailableNotification(renotifyInterval time.Durat
 	return notification, handleError("searchNotificationAvailable", err)
 }
 
-func (pgSQL *notificationz) GetNotification(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error) {
+func (pgSQL *notificationz) GetNotification(name string) (services.VulnerabilityNotification, error) {
 	defer observeQueryTime("GetNotification", "all", time.Now())
 
 	// Get Notification.
 	notification, err := pgSQL.scanNotification(pgSQL.QueryRow(searchNotification, name), true)
 	if err != nil {
-		return notification, page, handleError("searchNotification", err)
+		return notification, handleError("searchNotification", err)
 	}
 
-	// Load vulnerabilities' LayersIntroducingVulnerability.
-	page.OldVulnerability, err = pgSQL.loadLayerIntroducingVulnerability(
-		notification.OldVulnerability,
-		limit,
-		page.OldVulnerability,
-	)
-
-	if err != nil {
-		return notification, page, err
-	}
-
-	page.NewVulnerability, err = pgSQL.loadLayerIntroducingVulnerability(
-		notification.NewVulnerability,
-		limit,
-		page.NewVulnerability,
-	)
-
-	if err != nil {
-		return notification, page, err
-	}
-
-	return notification, page, nil
+	return notification, nil
 }
 
-func (pgSQL *notificationz) scanNotification(row *sql.Row, hasVulns bool) (services.VulnerabilityNotification, error) {
-	var notification services.VulnerabilityNotification
+func (pgSQL *notificationz) scanNotification(row *sql.Row, hasVulns bool) (notification services.VulnerabilityNotification, err error) {
 	var created zero.Time
 	var notified zero.Time
 	var deleted zero.Time
 	var oldVulnerabilityNullableID sql.NullInt64
 	var newVulnerabilityNullableID sql.NullInt64
 
-	// Scan notification.
+	// Scan notification.  Depending on whether hasVulns is true, the row contains a different number of columns.
 	if hasVulns {
-		err := row.Scan(
+		err = row.Scan(
 			&notification.ID,
 			&notification.Name,
 			&created,
@@ -112,16 +86,17 @@ func (pgSQL *notificationz) scanNotification(row *sql.Row, hasVulns bool) (servi
 			&oldVulnerabilityNullableID,
 			&newVulnerabilityNullableID,
 		)
-
-		if err != nil {
-			return notification, err
-		}
 	} else {
-		err := row.Scan(&notification.ID, &notification.Name, &created, &notified, &deleted)
-
-		if err != nil {
-			return notification, err
-		}
+		err = row.Scan(
+			&notification.ID,
+			&notification.Name,
+			&created,
+			&notified,
+			&deleted,
+		)
+	}
+	if err != nil {
+		return notification, err
 	}
 
 	notification.Created = created.Time
@@ -130,80 +105,14 @@ func (pgSQL *notificationz) scanNotification(row *sql.Row, hasVulns bool) (servi
 
 	if hasVulns {
 		if oldVulnerabilityNullableID.Valid {
-			vulnerability, err := pgSQL.vulnz.FindVulnerabilityByID(services.Model{int(oldVulnerabilityNullableID.Int64)})
-			if err != nil {
-				return notification, err
-			}
-
-			notification.OldVulnerability = &vulnerability
+			notification.OldVulnerability = &services.Vulnerability{Model: services.Model{int(oldVulnerabilityNullableID.Int64)}}
 		}
-
 		if newVulnerabilityNullableID.Valid {
-			vulnerability, err := pgSQL.vulnz.FindVulnerabilityByID(services.Model{int(newVulnerabilityNullableID.Int64)})
-			if err != nil {
-				return notification, err
-			}
-
-			notification.NewVulnerability = &vulnerability
+			notification.NewVulnerability = &services.Vulnerability{Model: services.Model{int(newVulnerabilityNullableID.Int64)}}
 		}
 	}
 
 	return notification, nil
-}
-
-// Fills Vulnerability.LayersIntroducingVulnerability.
-// limit -1: won't do anything
-// limit 0: will just get the startID of the second page
-// TODO(mattmoor): I believe this truly belongs as a distinct API on layers.Service
-func (pgSQL *notificationz) loadLayerIntroducingVulnerability(vulnerability *services.Vulnerability, limit, startID int) (int, error) {
-	tf := time.Now()
-
-	if vulnerability == nil {
-		return -1, nil
-	}
-
-	// A startID equals to -1 means that we reached the end already.
-	if startID == -1 || limit == -1 {
-		return -1, nil
-	}
-
-	// We do `defer observeQueryTime` here because we don't want to observe invalid calls.
-	defer observeQueryTime("loadLayerIntroducingVulnerability", "all", tf)
-
-	// Query with limit + 1, the last item will be used to know the next starting ID.
-	rows, err := pgSQL.Query(searchNotificationLayerIntroducingVulnerability,
-		vulnerability.ID, startID, limit+1)
-	if err != nil {
-		return 0, handleError("searchNotificationLayerIntroducingVulnerability", err)
-	}
-	defer rows.Close()
-
-	var layers []services.Layer
-	for rows.Next() {
-		var layer services.Layer
-
-		if err := rows.Scan(&layer.ID, &layer.Name); err != nil {
-			return -1, handleError("searchNotificationLayerIntroducingVulnerability.Scan()", err)
-		}
-
-		layers = append(layers, layer)
-	}
-	if err = rows.Err(); err != nil {
-		return -1, handleError("searchNotificationLayerIntroducingVulnerability.Rows()", err)
-	}
-
-	size := limit
-	if len(layers) < limit {
-		size = len(layers)
-	}
-	vulnerability.LayersIntroducingVulnerability = layers[:size]
-
-	nextID := -1
-	if len(layers) > limit {
-		nextID = layers[limit].ID
-	}
-
-	return nextID, nil
 }
 
 func (pgSQL *notificationz) SetNotificationNotified(name string) error {

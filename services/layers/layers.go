@@ -72,4 +72,7 @@ type Service interface {
 	// DeleteLayer deletes a Layer from the database and every layers that are based on it,
 	// recursively.
 	DeleteLayer(name string) error
+
+	// LoadLayerIntroducingVulnerability is a paginated way of populating the Vulnerability.LayersIntroducingVulnerability field.
+	LoadLayerIntroducingVulnerability(v *services.Vulnerability, limit int, page int) (nextPage int, err error)
 }

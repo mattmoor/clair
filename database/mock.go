@@ -22,27 +22,28 @@ import (
 // MockDatastore implements Datastore and enables overriding each available method.
 // The default behavior of each method is to simply panic.
 type MockDatastore struct {
-	FctListNamespaces           func() ([]services.Namespace, error)
-	FctInsertLayer              func(services.Layer) error
-	FctFindLayer                func(name string, withFeatures, withVulnerabilities bool) (services.Layer, error)
-	FctDeleteLayer              func(name string) error
-	FctListVulnerabilities      func(namespaceName string, limit int, page int) ([]services.Vulnerability, int, error)
-	FctInsertVulnerabilities    func(vulnerabilities []services.Vulnerability, createNotification bool) error
-	FctFindVulnerability        func(namespaceName, name string) (services.Vulnerability, error)
-	FctDeleteVulnerability      func(namespaceName, name string) error
-	FctInsertVulnerabilityFixes func(vulnerabilityNamespace, vulnerabilityName string, fixes []services.FeatureVersion) error
-	FctDeleteVulnerabilityFix   func(vulnerabilityNamespace, vulnerabilityName, featureName string) error
-	FctGetAvailableNotification func(renotifyInterval time.Duration) (services.VulnerabilityNotification, error)
-	FctGetNotification          func(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error)
-	FctSetNotificationNotified  func(name string) error
-	FctDeleteNotification       func(name string) error
-	FctInsertKeyValue           func(key, value string) error
-	FctGetKeyValue              func(key string) (string, error)
-	FctLock                     func(name string, owner string, duration time.Duration, renew bool) (bool, time.Time)
-	FctUnlock                   func(name, owner string)
-	FctFindLock                 func(name string) (string, time.Time, error)
-	FctPing                     func() bool
-	FctClose                    func()
+	FctListNamespaces                    func() ([]services.Namespace, error)
+	FctInsertLayer                       func(services.Layer) error
+	FctFindLayer                         func(name string, withFeatures, withVulnerabilities bool) (services.Layer, error)
+	FctDeleteLayer                       func(name string) error
+	FctLoadLayerIntroducingVulnerability func(v *services.Vulnerability, limit int, page int) (nextPage int, err error)
+	FctListVulnerabilities               func(namespaceName string, limit int, page int) ([]services.Vulnerability, int, error)
+	FctInsertVulnerabilities             func(vulnerabilities []services.Vulnerability, createNotification bool) error
+	FctFindVulnerability                 func(namespaceName, name string) (services.Vulnerability, error)
+	FctDeleteVulnerability               func(namespaceName, name string) error
+	FctInsertVulnerabilityFixes          func(vulnerabilityNamespace, vulnerabilityName string, fixes []services.FeatureVersion) error
+	FctDeleteVulnerabilityFix            func(vulnerabilityNamespace, vulnerabilityName, featureName string) error
+	FctGetAvailableNotification          func(renotifyInterval time.Duration) (services.VulnerabilityNotification, error)
+	FctGetNotification                   func(name string, limit int, page services.VulnerabilityNotificationPageNumber) (services.VulnerabilityNotification, services.VulnerabilityNotificationPageNumber, error)
+	FctSetNotificationNotified           func(name string) error
+	FctDeleteNotification                func(name string) error
+	FctInsertKeyValue                    func(key, value string) error
+	FctGetKeyValue                       func(key string) (string, error)
+	FctLock                              func(name string, owner string, duration time.Duration, renew bool) (bool, time.Time)
+	FctUnlock                            func(name, owner string)
+	FctFindLock                          func(name string) (string, time.Time, error)
+	FctPing                              func() bool
+	FctClose                             func()
 }
 
 func (mds *MockDatastore) ListNamespaces() ([]services.Namespace, error) {
@@ -69,6 +70,13 @@ func (mds *MockDatastore) FindLayer(name string, withFeatures, withVulnerabiliti
 func (mds *MockDatastore) DeleteLayer(name string) error {
 	if mds.FctDeleteLayer != nil {
 		return mds.FctDeleteLayer(name)
+	}
+	panic("required mock function not implemented")
+}
+
+func (mds *MockDatastore) LoadLayerIntroducingVulnerability(v *services.Vulnerability, limit int, page int) (nextPage int, err error) {
+	if mds.FctLoadLayerIntroducingVulnerability != nil {
+		return mds.FctLoadLayerIntroducingVulnerability(v, limit, page)
 	}
 	panic("required mock function not implemented")
 }
